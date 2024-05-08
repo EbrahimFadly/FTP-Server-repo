@@ -1,12 +1,16 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <unistd.h>
-#include <string.h>
+// #include <string.h>
 #include <sys/wait.h>
 #include <sys/socket.h>
 #include <resolv.h>
 #include <arpa/inet.h>
 #include <pthread.h>
+#include <iostream>
+#include <fstream>
+// #include <string>
+using namespace std;
 
 /* Definations */
 #define DEFAULT_BUFLEN 1024
@@ -20,7 +24,7 @@ typedef struct User {
     int usernum;
 }User;
 
-User createUser();
+bool authUser();
 void listFiles();
 FILE getFile(char filename[]);
 void putFile();
@@ -32,21 +36,18 @@ int main(int argc, char *argv[])
 {
     if(argc != 6) return 1;
     int port, opt;
-    char passfile[200] = "";
-    char dir[200] = "";
+    string passfile, dir;
 
      while ((opt = getopt(argc, argv, "d:p:u:")) != -1) {
         switch (opt) {
             case 'd':
-                strncpy(dir, optarg, sizeof(dir) - 1);
-                dir[sizeof(dir) - 1] = '\0';
+                dir = optarg;
                 break;
             case 'p':
                 port = atoi(optarg);
                 break;
             case 'u':
-                strncpy(passfile, optarg, sizeof(passfile) - 1);
-                passfile[sizeof(passfile) - 1] = '\0';
+                passfile = optarg;
                 break;
             default:
                 printf("Incorrect foramt: %s -d directory -p port -u password\n", argv[0]);
@@ -58,9 +59,25 @@ int main(int argc, char *argv[])
     return 0;
 }
 
+bool authUser(string file, string username, string pass){
+    ifstream f(file);
 
-User createUser(){
+    if (!f) {
+        printf("Error in the password file");
+        return false;
+    }
 
+    string line, pass;
+    int pos;
+
+    while (getline(f, line))
+    {
+        pos = line.find(':');
+        if (line.substr(0, pos) == username){
+            if (line.substr(pos+1) == pass) return true;
+        }
+    }
+    return false;
 }
 
 void listFiles(){
