@@ -26,9 +26,9 @@ typedef struct User {
 
 bool authUser();
 void listFiles();
-FILE getFile(char filename[]);
-void putFile();
-void deleteFile();
+FILE getFile(FILE f);
+int putFile();
+int deleteFile(string filename, string dir);
 void quit();
 
 
@@ -80,20 +80,22 @@ bool authUser(string file, string username, string pass){
     return false;
 }
 
-void listFiles(){
+void listFiles(string dir){
 
 }
 
-FILE getFile(char filename[]){
+FILE getFile(string filename){
 
 }
 
-void putFile(FILE f){
+int putFile(FILE f){
 
 }
 
-void deleteFile(char filename[]){
-
+int deleteFile(string filename, string dir){ // what if file has different extension other then .txt??
+    string filetodelete = dir + '/' + filename + ".txt";
+    if (remove(filetodelete.c_str()) != 0) return 1; 
+    return 0;
 }
 
 void quit(){
