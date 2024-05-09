@@ -12,9 +12,7 @@
 // #include <string>
 using namespace std;
 
-/* Definations */
 #define DEFAULT_BUFLEN 1024
-// #define PORT 4321
 
 static int unum = 1;
 
@@ -24,17 +22,20 @@ typedef struct User {
     int usernum;
 }User;
 
+
+
 bool authUser();
 void listFiles();
 FILE getFile(FILE f);
 int putFile();
 int deleteFile(string filename, string dir);
 void quit();
+void createClient(int clientSocket);
 
 
 int main(int argc, char *argv[])
 {
-    if(argc != 6) return 1;
+    if(argc != 7) return 1;
     int port, opt;
     string passfile, dir;
 
@@ -56,6 +57,44 @@ int main(int argc, char *argv[])
     }
     if ((dir[0] == '\0' || passfile[0] == '\0')) return 1;
     
+    
+    // -----------  creating the socket ----------- 
+    int server;
+    if ((server = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
+        perror("Can't create socket!");
+        return 1;
+    }
+
+    // -----------  binding ----------- 
+    struct sockaddr_in local_addr;
+    local_addr.sin_family = AF_INET;
+    local_addr.sin_port = htons(port); // little endian to big endian
+
+    if ( bind(server, (struct sockaddr*)&local_addr, sizeof(local_addr)) != 0 ){
+        perror("Error binding");
+        return 1;
+    }
+    if ( listen(server, 1) != 0 ){
+        perror("Could not listen");
+        return 1;
+    }
+
+    printf("FTP server now listening on port: %d", port);
+
+
+    // struct sockaddr_in remote_addr;
+    // socklen_t remote_addrlen = sizeof(local_addr);
+
+
+    // ----------- aceepting ----------- 
+
+    // -----------  creating a client thread ----------- 
+
+    
+
+
+    
+
     return 0;
 }
 
@@ -67,7 +106,7 @@ bool authUser(string file, string username, string pass){
         return false;
     }
 
-    string line, pass;
+    string line;
     int pos;
 
     while (getline(f, line))
@@ -99,5 +138,5 @@ int deleteFile(string filename, string dir){ // what if file has different exten
 }
 
 void quit(){
-
+    // print username exit message, session duration, connection time
 }
