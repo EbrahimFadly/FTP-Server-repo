@@ -9,6 +9,8 @@
 #include <pthread.h>
 #include <iostream>
 #include <fstream>
+#include <sys/stat.h>
+#include <dirent.h>
 // #include <string>
 using namespace std;
 
@@ -25,12 +27,15 @@ typedef struct User {
 
 
 bool authUser();
-void listFiles();
+string listFiles();
 FILE getFile(FILE f);
 int putFile();
 int deleteFile(string filename, string dir);
 void quit();
 void createClient(int clientSocket);
+
+
+
 
 
 int main(int argc, char *argv[])
@@ -66,7 +71,7 @@ int main(int argc, char *argv[])
         return 1;
     }
     if((access(dir.c_str(), R_OK)) < 0){
-        perror("Error with the directory file");
+        perror("Error with the directory");
         return 1;
     }
     
@@ -132,20 +137,36 @@ bool authUser(string file, string username, string pass){
     return false;
 }
 
-void listFiles(string dir){
+string listFiles(string dir){
+    string filelist = "";
+    string fname, fsize, fpath;
+    struct dirent *dirfile;
+    struct stat filestats;
+    DIR *directory = opendir(dir.c_str());
 
+    while ((dirfile = readdir(directory)) != NULL)
+    {
+        fname = dirfile->d_name;
+        fpath = dir + "/" + fname;
+        lstat(fpath.c_str(), &filestats);
+        fsize = to_string(filestats.st_size);
+        filelist += "\n" + fname + " " + fsize;
+    }
+
+    return filelist += "\n.";
 }
 
-FILE getFile(string filename){
-
-}
+// FILE getFile(string filename, string dir){
+//     string fileloc = dir + '/' + filename;
+//     if((access(fileloc.c_str(), R_OK)) < 0) return NULL;
+// }
 
 int putFile(FILE f){
 
 }
 
-int deleteFile(string filename, string dir){ // what if file has different extension other then .txt??
-    string filetodelete = dir + '/' + filename + ".txt";
+int deleteFile(string filename, string dir){ 
+    string filetodelete = dir + '/' + filename;
     if (remove(filetodelete.c_str()) != 0) return 1; 
     return 0;
 }
@@ -153,3 +174,4 @@ int deleteFile(string filename, string dir){ // what if file has different exten
 void quit(){
     // print username exit message, session duration, connection time
 }
+
