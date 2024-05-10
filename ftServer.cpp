@@ -56,6 +56,19 @@ int main(int argc, char *argv[])
         }
     }
     if ((dir[0] == '\0' || passfile[0] == '\0')) return 1;
+    if (port < 1024 || port > 65535)
+    {
+        printf("Port can not be use, choose another port");
+        return 1;
+    }
+    if((access(passfile.c_str(), R_OK)) < 0){
+        perror("Error with the passwords file");
+        return 1;
+    }
+    if((access(dir.c_str(), R_OK)) < 0){
+        perror("Error with the directory file");
+        return 1;
+    }
     
     
     // -----------  creating the socket ----------- 
@@ -88,7 +101,7 @@ int main(int argc, char *argv[])
 
     // ----------- aceepting ----------- 
 
-    // -----------  creating a client thread ----------- 
+    // ----------- creating a client thread ----------- 
 
     
 
