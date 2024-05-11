@@ -24,7 +24,7 @@ typedef struct User {
     char username[200];
     char password[200];
     struct sockaddr_in ip_addr;
-    time_t logintime;
+    time_t conntime;
     int userid;
 }User;
 
@@ -104,24 +104,23 @@ int main(int argc, char *argv[])
 
 
     // struct sockaddr_in remote_addr;
-    // socklen_t remote_addrlen = sizeof(local_addr);
+    socklen_t remote_addrlen = sizeof(local_addr);
 
     while (true)
     {
-        
+         // ----------- aceepting ----------- 
+        pthread_t clientt;
+        User user;
+
+        user.client_sock = accept(server, (struct sockaddr*)&local_addr, &remote_addrlen);
+        printf("Connected: %s:%d\n", inet_ntoa(local_addr.sin_addr), ntohs(local_addr.sin_port));
+
+        // ----------- creating a client thread ----------- 
+        if ( pthread_create(&clientt, NULL, client, &user) != 0 )
+            perror("Client thread created");
+        else
+            pthread_detach(clientt);
     }
-    
-
-
-    // ----------- aceepting ----------- 
-
-    // ----------- creating a client thread ----------- 
-
-    
-
-
-    
-
     return 0;
 }
 
@@ -175,10 +174,6 @@ int deleteFile(string filename, string dir){
     return 0;
 }
 
-// void quit(){ no need for quit function
-//     // print username exit message, session duration, connection time
-// }
-
 void* client(void *arg){ // will take user struct as argument
     char line[DEFAULT_BUFLEN];
     int bytes;
@@ -202,6 +197,5 @@ void* client(void *arg){ // will take user struct as argument
 
     printf(""); // print username exit message, session duration, connection time
     return;
-
 }
 
