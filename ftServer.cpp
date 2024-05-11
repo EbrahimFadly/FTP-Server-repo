@@ -12,6 +12,7 @@
 #include <sys/stat.h>
 #include <dirent.h>
 // #include <string>
+
 using namespace std;
 
 #define DEFAULT_BUFLEN 1024
@@ -19,9 +20,12 @@ using namespace std;
 static int unum = 1;
 
 typedef struct User {
+    int client_sock;
     char username[200];
     char password[200];
-    int usernum;
+    struct sockaddr_in ip_addr;
+    time_t logintime;
+    int userid;
 }User;
 
 
@@ -33,8 +37,7 @@ int putFile();
 int deleteFile(string filename, string dir);
 void quit();
 void createClient(int clientSocket);
-
-
+void* client(void *arg);
 
 
 
@@ -103,6 +106,12 @@ int main(int argc, char *argv[])
     // struct sockaddr_in remote_addr;
     // socklen_t remote_addrlen = sizeof(local_addr);
 
+    while (true)
+    {
+        
+    }
+    
+
 
     // ----------- aceepting ----------- 
 
@@ -156,11 +165,6 @@ string listFiles(string dir){
     return filelist += "\n.";
 }
 
-// FILE getFile(string filename, string dir){
-//     string fileloc = dir + '/' + filename;
-//     if((access(fileloc.c_str(), R_OK)) < 0) return NULL;
-// }
-
 int putFile(FILE f){
 
 }
@@ -171,7 +175,33 @@ int deleteFile(string filename, string dir){
     return 0;
 }
 
-void quit(){
-    // print username exit message, session duration, connection time
+// void quit(){ no need for quit function
+//     // print username exit message, session duration, connection time
+// }
+
+void* client(void *arg){ // will take user struct as argument
+    char line[DEFAULT_BUFLEN];
+    int bytes;
+    User clientInfo = *(User *)arg;
+    bool loggedin = false;
+
+    do
+    {
+        bytes = recv(clientInfo.client_sock, line, sizeof(line), 0);
+        if(bytes > 0){
+            // handling requests
+        }else if (bytes == 0 ) {
+            printf("Connection closed by client\n");
+            break;
+        }else{
+            printf("Problem with the connection with client %s, closing connection...\n");
+            break;
+        }
+    } while (bytes > 0);
+    
+
+    printf(""); // print username exit message, session duration, connection time
+    return;
+
 }
 
