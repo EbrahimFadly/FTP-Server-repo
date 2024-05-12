@@ -11,6 +11,7 @@
 #include <fstream>
 #include <sys/stat.h>
 #include <dirent.h>
+#include <string.h>
 // #include <string>
 
 using namespace std;
@@ -24,6 +25,7 @@ typedef struct User {
     char username[200];
     char password[200];
     struct sockaddr_in ip_addr;
+    char clientIP[INET_ADDRSTRLEN];
     time_t conntime;
     int userid;
 }User;
@@ -177,14 +179,62 @@ int deleteFile(string filename, string dir){
 void* client(void *arg){ // will take user struct as argument
     char line[DEFAULT_BUFLEN];
     int bytes;
-    User clientInfo = *(User *)arg;
+    // char* req;
+    User clientInfo = *(User *)arg; 
     bool loggedin = false;
+    // char values[DEFAULT_BUFLEN][DEFAULT_BUFLEN];
 
     do
     {
         bytes = recv(clientInfo.client_sock, line, sizeof(line), 0);
         if(bytes > 0){
             // handling requests
+            char* req = strtok(line, " ");
+            if(strcmp(req, "USER") == 0){
+                    // loggedin = authUser();
+            }else if (strcmp(req, "LIST") == 0){
+                if (loggedin)
+                {
+                    /* code */
+                }else
+                {
+                    
+                }
+            }else if (strcmp(req, "GET") == 0){
+                if (loggedin)
+                {
+                    /* code */
+                }else
+                {
+                    /* code */
+                }
+            }else if (strcmp(req, "PUT") == 0){
+                if (loggedin)
+                {
+                    /* code */
+                }else
+                {
+                    /* code */
+                }
+            }else if (strcmp(req, "DEL") == 0){
+                if (loggedin)
+                {
+                    /* code */
+                }else
+                {
+                    /* code */
+                }
+            }else if (strcmp(req, "QUIT") == 0){
+                if (loggedin)
+                {
+                    /* code */
+                }else
+                {
+                    /* code */
+                }
+            }else{
+                /* code */
+            }
         }else if (bytes == 0 ) {
             printf("Connection closed by client\n");
             break;
@@ -198,4 +248,7 @@ void* client(void *arg){ // will take user struct as argument
     printf(""); // print username exit message, session duration, connection time
     return;
 }
+
+// string[] splitString(string line){
+// }
 
