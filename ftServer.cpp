@@ -16,8 +16,10 @@
 
 using namespace std;
 
+
 #define DEFAULT_BUFLEN 1024
 
+string passfile, dir;
 static int unum = 1;
 
 typedef struct User {
@@ -47,7 +49,6 @@ int main(int argc, char *argv[])
 {
     if(argc != 7) return 1;
     int port, opt;
-    string passfile, dir;
 
      while ((opt = getopt(argc, argv, "d:p:u:")) != -1) {
         switch (opt) {
@@ -189,51 +190,71 @@ void* client(void *arg){ // will take user struct as argument
         bytes = recv(clientInfo.client_sock, line, sizeof(line), 0);
         if(bytes > 0){
             // handling requests
+            int byte_count, sent_b;
             char* req = strtok(line, " ");
             if(strcmp(req, "USER") == 0){
-                    // loggedin = authUser();
-            }else if (strcmp(req, "LIST") == 0){
-                if (loggedin)
-                {
-                    /* code */
-                }else
-                {
+                    string name = strtok(line, " ");
+                    string pass = strtok(line, " ");
+                    loggedin = authUser(passfile, name, pass);
+                    if (loggedin){
+                        if((bytes=send(clientInfo.client_sock, "200 User test granted to access.\n", bytes, 0)) < 0){
+                            printf("failed to send message\n");
+                            break;
+                        }
+                    }else{
+                        if((bytes=send(clientInfo.client_sock, "400 User not found. Please try with another user.\n", bytes, 0)) < 0){
+                            printf("failed to send message\n");
+                            break;
+                        }
+                    }
                     
+            }else if (strcmp(req, "LIST") == 0){
+                if (loggedin){
+                }else{
+                    if((bytes=send(clientInfo.client_sock, "You are not logged in!!\n", bytes, 0)) < 0){
+                            printf("failed to send message\n");
+                            break;
+                    }
                 }
             }else if (strcmp(req, "GET") == 0){
-                if (loggedin)
-                {
+                if (loggedin){
                     /* code */
-                }else
-                {
-                    /* code */
+                }else{
+                    if((bytes=send(clientInfo.client_sock, "You are not logged in!!\n", bytes, 0)) < 0){
+                            printf("failed to send message\n");
+                            break;
+                    }
                 }
             }else if (strcmp(req, "PUT") == 0){
-                if (loggedin)
-                {
+                if (loggedin){
                     /* code */
-                }else
-                {
-                    /* code */
+                }else{
+                    if((bytes=send(clientInfo.client_sock, "You are not logged in!!\n", bytes, 0)) < 0){
+                            printf("failed to send message\n");
+                            break;
+                    }
                 }
             }else if (strcmp(req, "DEL") == 0){
-                if (loggedin)
-                {
+                if (loggedin){
                     /* code */
-                }else
-                {
-                    /* code */
+                }else{
+                    if((bytes=send(clientInfo.client_sock, "You are not logged in!!\n", bytes, 0)) < 0){
+                            printf("failed to send message\n");
+                            break;
+                    }
                 }
             }else if (strcmp(req, "QUIT") == 0){
-                if (loggedin)
-                {
-                    /* code */
-                }else
-                {
-                    /* code */
+                if (loggedin){
+                    if((bytes=send(clientInfo.client_sock, "Goodbye!\n", bytes, 0)) < 0){
+                        printf("failed to send message\n");
+                        break;
+                    }
                 }
             }else{
-                /* code */
+                if((bytes=send(clientInfo.client_sock, "Incorrect command!!\n", bytes, 0)) < 0){
+                        printf("failed to send message\n");
+                        break;
+                }
             }
         }else if (bytes == 0 ) {
             printf("Connection closed by client\n");
@@ -251,4 +272,11 @@ void* client(void *arg){ // will take user struct as argument
 
 // string[] splitString(string line){
 // }
+
+
+
+    // if((bytes_read=send(client_sock, msg, bytes_read, 0)) < 0){
+    //     printf("failed to send message\n");
+    //     return;
+    // }
 
