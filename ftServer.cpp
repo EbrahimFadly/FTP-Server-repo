@@ -36,8 +36,8 @@ typedef struct User {
 
 bool authUser();
 string listFiles();
-FILE getFile(FILE f);
-int putFile();
+char* getFile(string filename, string dir);
+void putFile(char file[]);
 int deleteFile(string filename, string dir);
 void quit();
 void createClient(int clientSocket);
@@ -167,7 +167,24 @@ string listFiles(string dir){
     return filelist += "\n.";
 }
 
-int putFile(FILE f){
+char* getFile(string filename, string dir){
+    string line, filepath = dir + '/' + filename;
+    char filebytes[1000000000]; // max file size 1GB
+    ifstream f(filepath);
+
+    if (!f) return nullptr;
+
+    while (getline(f, line))
+    {
+        strcat(filebytes, line.c_str());
+        strcat(filebytes, "\n");
+    }
+    f.close();
+
+    return filebytes;
+}
+
+void putFile(char file[]){
 
 }
 
@@ -180,7 +197,7 @@ int deleteFile(string filename, string dir){
 void* client(void *arg){ // will take user struct as argument
     char line[DEFAULT_BUFLEN];
     int bytes;
-    // char* req;
+    char* req;
     User clientInfo = *(User *)arg; 
     bool loggedin = false;
     // char values[DEFAULT_BUFLEN][DEFAULT_BUFLEN];
@@ -191,7 +208,7 @@ void* client(void *arg){ // will take user struct as argument
         if(bytes > 0){
             // handling requests
             int byte_count, sent_b;
-            char* req = strtok(line, " ");
+            req = strtok(line, " ");
             if(strcmp(req, "USER") == 0){
                     string name = strtok(line, " ");
                     string pass = strtok(line, " ");
@@ -210,6 +227,11 @@ void* client(void *arg){ // will take user struct as argument
                     
             }else if (strcmp(req, "LIST") == 0){
                 if (loggedin){
+                    string filesstr = listFiles(dir);
+                    if((bytes=send(clientInfo.client_sock, filesstr.c_str(), bytes, 0)) < 0){
+                            printf("failed to send message\n");
+                            break;
+                    }
                 }else{
                     if((bytes=send(clientInfo.client_sock, "You are not logged in!!\n", bytes, 0)) < 0){
                             printf("failed to send message\n");
@@ -236,7 +258,7 @@ void* client(void *arg){ // will take user struct as argument
                 }
             }else if (strcmp(req, "DEL") == 0){
                 if (loggedin){
-                    /* code */
+                    
                 }else{
                     if((bytes=send(clientInfo.client_sock, "You are not logged in!!\n", bytes, 0)) < 0){
                             printf("failed to send message\n");
@@ -267,7 +289,6 @@ void* client(void *arg){ // will take user struct as argument
     
 
     printf(""); // print username exit message, session duration, connection time
-    return;
 }
 
 // string[] splitString(string line){
