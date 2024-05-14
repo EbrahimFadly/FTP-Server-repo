@@ -37,7 +37,7 @@ typedef struct User {
 bool authUser();
 string listFiles();
 char* getFile(string filename, string dir);
-void putFile(char file[]);
+void putFile(char file[], string filename, string dir);
 int deleteFile(string filename, string dir);
 void quit();
 void createClient(int clientSocket);
@@ -184,8 +184,17 @@ char* getFile(string filename, string dir){
     return filebytes;
 }
 
-void putFile(char file[]){
+void putFile(char file[], string filename, string dir){
+    string filepath = dir + '/' + filename;
+    ofstream f(filepath);
 
+    if (f.is_open() == false){
+        printf("Error opening the file");
+        return;
+    }
+    
+    f << file;
+    f.close();
 }
 
 int deleteFile(string filename, string dir){ 
