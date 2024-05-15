@@ -47,8 +47,7 @@ int main(int argc, char *argv[])
 {
     if(argc != 7) return 1;
     int port, opt;
-
-     while ((opt = getopt(argc, argv, "d:p:u:")) != -1) {
+    while ((opt = getopt(argc, argv, "d:p:u:")) != -1) {
         switch (opt) {
             case 'd':
                 dir = optarg;
@@ -91,7 +90,6 @@ int main(int argc, char *argv[])
     struct sockaddr_in local_addr;
     local_addr.sin_family = AF_INET;
     local_addr.sin_port = htons(port); // little endian to big endian
-
     if ( bind(server, (struct sockaddr*)&local_addr, sizeof(local_addr)) != 0 ){
         perror("Error binding");
         return 1;
@@ -100,10 +98,8 @@ int main(int argc, char *argv[])
         perror("Could not listen");
         return 1;
     }
-
     printf("FTP server now listening on port: %d", port);
-
-
+    
     // struct sockaddr_in remote_addr;
     socklen_t remote_addrlen = sizeof(local_addr);
 
@@ -167,16 +163,16 @@ string listFiles(string dir){
 
 char* getFile(string filename, string dir){
     string line, filepath = dir + '/' + filename;
-    char filebytes[1000000000]; // max file size 1GB
+    struct stat filestats;
+
+    lstat(filepath.c_str(), &filestats);
+    char* filebytes = new char[filestats.st_size + 1]; // plus 1 for \0
     ifstream f(filepath);
 
     if (!f) return nullptr;
 
-    while (getline(f, line))
-    {
-        strcat(filebytes, line.c_str());
-        strcat(filebytes, "\n");
-    }
+    f.read(filebytes, filestats.st_size);
+    filebytes[filestats.st_size] = '\0';
     f.close();
 
     return filebytes;
