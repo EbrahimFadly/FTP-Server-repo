@@ -11,21 +11,17 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include <string.h>
-
 using namespace std;
 
-
 #define DEFAULT_BUFLEN 1024
+#define MAX_FILE_SIZE 1000000000 // 1 gigabytes 
 
 string passfile, dir;
-static int unum = 1;
 
 typedef struct User {
     int client_sock;
     bool loggedin = false;
 }User;
-
-
 
 bool authUser(string file, string username, string pass);
 string listFiles(string dir);
@@ -34,8 +30,6 @@ bool putFile(char* file, string filename, string dir, int size);
 bool deleteFile(string filename, string dir);
 void quit();
 void* client(void *arg);
-
-
 
 int main(int argc, char *argv[])
 {
@@ -98,7 +92,6 @@ int main(int argc, char *argv[])
     printf("FTP server now listening on port:");
     printf("%d\n", port);
     
-    // struct sockaddr_in remote_addr;
     socklen_t remote_addrlen = sizeof(local_addr);
 
     while (true)
@@ -121,11 +114,11 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-bool authUser(string file, string username, string pass){ // tested
+bool authUser(string file, string username, string pass){
     ifstream f(file);
 
     if (!f) {
-        printf("Error in the password file");
+        perror("Error in the password file");
         return false;
     }
 
@@ -143,7 +136,7 @@ bool authUser(string file, string username, string pass){ // tested
 }
 
 
-string listFiles(string dir){ // tested
+string listFiles(string dir){
     string filelist = "";
     string fname, fsize, fpath;
     struct dirent *dirfile;
@@ -170,11 +163,13 @@ char* getFile(string filename, string dir){
     if (!f) return nullptr;
 
     lstat(filepath.c_str(), &filestats);
-    char* filebytes = new char[filestats.st_size + 2]; // plus 1 for \0
+    char* filebytes = new char[filestats.st_size + 4];
 
     f.read(filebytes, filestats.st_size);
     filebytes[filestats.st_size] = '\n';
-    filebytes[filestats.st_size + 1] = '\0';
+    filebytes[filestats.st_size + 1] = '.';
+    filebytes[filestats.st_size + 2] = '\n';
+    filebytes[filestats.st_size + 3] = '\0';
     f.close();
 
     return filebytes;
@@ -184,27 +179,22 @@ bool putFile(char* file, string filename, string dir, int size){
     string filepath = dir + '/' + filename;
     ofstream f(filepath, ios::binary); // opening in binary incase file is not in text format
 
-    if (f.is_open() == false){
-        printf("Error opening the file");
-        return false;
-    }
+    if (f.is_open() == false) return false;
     
     f.write(file, size);
     f.close();
     return true;
 }
 
-bool deleteFile(string filename, string dir){ // tested
+bool deleteFile(string filename, string dir){
     string filetodelete = dir + '/' + filename;
     if (remove(filetodelete.c_str()) != 0) return false; 
     return true;
 }
 
 void* client(void *arg){ // will take user struct as argument
-    printf("thread created\n");
     int bytes;
     User clientInfo = *(User *)arg; 
-    // char values[DEFAULT_BUFLEN][DEFAULT_BUFLEN];
     string req, msg;
 
     do
@@ -215,6 +205,7 @@ void* client(void *arg){ // will take user struct as argument
             line[bytes] = '\0';
             req = strtok(line, " ");
             // handling requests
+            //  ------------------------ Authentication ------------------------
             if(strncmp(req.c_str(), "USER", 4) == 0){
                     if (clientInfo.loggedin){
                         msg = "You are already logged in!\n";
@@ -246,7 +237,9 @@ void* client(void *arg){ // will take user struct as argument
                         }
                     }
                 }      
-            }else if (strncmp(req.c_str(), "LIST", 4) == 0){
+            }
+            //  ------------------------ LIST DIR ------------------------
+            else if (strncmp(req.c_str(), "LIST", 4) == 0){
                 if (clientInfo.loggedin){
                     string filesstr = listFiles(dir);
                     if((bytes=send(clientInfo.client_sock, filesstr.c_str(), strlen(filesstr.c_str()), 0)) < 0){
@@ -260,7 +253,9 @@ void* client(void *arg){ // will take user struct as argument
                             break;
                     }
                 }
-            }else if (strncmp(req.c_str(), "GET", 3) == 0){
+            }
+            //  ------------------------ GET FILE ------------------------
+            else if (strncmp(req.c_str(), "GET", 3) == 0){
                 if (clientInfo.loggedin){
                     char* filenamet = strtok(NULL, " ");
                     if (filenamet != nullptr){
@@ -287,26 +282,40 @@ void* client(void *arg){ // will take user struct as argument
                             break;
                     }
                 }
-            }else if (strncmp(req.c_str(), "PUT", 3) == 0){
+            }
+            //  ------------------------ PUT FILE------------------------
+            else if (strncmp(req.c_str(), "PUT", 3) == 0){
                 if (clientInfo.loggedin){
-                    string filename = strtok(NULL, " ");
-                    char filedata[1000000000];
-                    bytes = recv(clientInfo.client_sock, filedata, 1000000000, 0);
-                    if (bytes > 0){
-                        if(putFile(filedata, filename, dir, bytes) == false){
-                            msg = "400 File cannot save on server side.\n";
-                            if((bytes=send(clientInfo.client_sock, msg.c_str(), strlen(msg.c_str()), 0)) < 0){
-                            printf("failed to send message: %s \n", msg);
+                    char* filenamet = strtok(NULL, " ");
+                    if (filenamet != nullptr)
+                    {
+                        string filename(filenamet);
+                        filename.pop_back();
+                        char* filedata = new char[MAX_FILE_SIZE];
+                        bytes = recv(clientInfo.client_sock, filedata, MAX_FILE_SIZE, 0);
+                        if (bytes > 0){
+                            if(putFile(filedata, filename, dir, bytes) == false){
+                                    msg = "400 File cannot save on server side.\n";
+                                    if((bytes=send(clientInfo.client_sock, msg.c_str(), strlen(msg.c_str()), 0)) < 0){
+                                        printf("failed to send message: %s \n", msg);
+                                       break;
+                                    }
+                            }else{
+                                msg = "200 " + to_string(bytes) + " Byte " + filename + " file retrieved by server and was saved.\n";
+                                if((bytes=send(clientInfo.client_sock, msg.c_str(), strlen(msg.c_str()), 0)) < 0){
+                                        printf("failed to send message: %s \n", msg);
+                                        break;
+                                    }
+                            }
+                        }else if (bytes == 0){
+                            printf("Connection closed by client\n");
                             break;
-                        }
+                        }else{
+                            printf("Problem with the connection with client %d, closing connection...\n", clientInfo.client_sock);
+                            break;  
+                        }    
+                        delete[] filedata;
                     }
-                    }else if (bytes == 0){
-                        printf("Connection closed by client\n");
-                        break;
-                    }else{
-                        printf("Problem with the connection with client %d, closing connection...\n", clientInfo.client_sock);
-                        break;  
-                    }                  
                 }else{
                     msg = "You are not logged in!!\n";
                     if((bytes=send(clientInfo.client_sock, msg.c_str(), strlen(msg.c_str()), 0)) < 0){
@@ -314,7 +323,9 @@ void* client(void *arg){ // will take user struct as argument
                             break;
                     }
                 }
-            }else if (strncmp(req.c_str(), "DEL", 3) == 0){
+            }
+            //  ------------------------ Delete ------------------------
+            else if (strncmp(req.c_str(), "DEL", 3) == 0){
                 if (clientInfo.loggedin){
                     bool deleted = false;
                     char *filent = strtok(NULL, " ");
@@ -343,13 +354,14 @@ void* client(void *arg){ // will take user struct as argument
                             break;
                     }
                 }
-            }else if (strncmp(req.c_str(), "QUIT", 4) == 0){
+            }
+            // ------------------------ QUIT ------------------------
+            else if (strncmp(req.c_str(), "QUIT", 4) == 0){
                 if (clientInfo.loggedin){
                     msg = "Goodbye!\n";
                     if((bytes=send(clientInfo.client_sock, msg.c_str(), strlen(msg.c_str()), 0)) < 0){
                         printf("failed to send message: %s \n", msg);
                     }
-                    // printf("Client %s has logged off", clientInfo.client_sock);
                     break;
                 }
             }else{
@@ -367,10 +379,9 @@ void* client(void *arg){ // will take user struct as argument
             break;
         }
     } while (bytes > 0);
-    // delete[] &clientInfo;
     
-
-    printf(""); // print username exit message, session duration, connection time
+    return 0;
 }
+
 
 
