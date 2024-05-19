@@ -166,14 +166,15 @@ char* getFile(string filename, string dir){
     string line, filepath = dir + '/' + filename;
     struct stat filestats;
 
-    lstat(filepath.c_str(), &filestats);
-    char* filebytes = new char[filestats.st_size + 1]; // plus 1 for \0
     ifstream f(filepath);
-
     if (!f) return nullptr;
 
+    lstat(filepath.c_str(), &filestats);
+    char* filebytes = new char[filestats.st_size + 2]; // plus 1 for \0
+
     f.read(filebytes, filestats.st_size);
-    filebytes[filestats.st_size] = '\0';
+    filebytes[filestats.st_size] = '\n';
+    filebytes[filestats.st_size + 1] = '\0';
     f.close();
 
     return filebytes;
@@ -261,22 +262,24 @@ void* client(void *arg){ // will take user struct as argument
                 }
             }else if (strncmp(req.c_str(), "GET", 3) == 0){
                 if (clientInfo.loggedin){
-                    string filename = strtok(NULL, " ");
-                    char* filedata = getFile(filename, dir);
-                    if(filedata != nullptr){
-                        string msg = "200 " + to_string(strlen(filedata)) + " Byte " + filename + "file retrieved by server and was saved.\n";
-                        if((bytes=send(clientInfo.client_sock, &filedata, strlen(filedata), 0)) < 0){
-                            printf("failed to send message: %s \n", msg);
-                            break;
-                        }
-                    }else{
-                        string msg = "404 File " + filename + "not found.\n";
-                        if((bytes=send(clientInfo.client_sock, msg.c_str(), strlen(msg.c_str()), 0)) < 0){
-                            printf("failed to send message: %s \n", msg);
-                            break;
+                    char* filenamet = strtok(NULL, " ");
+                    if (filenamet != nullptr){
+                        string filename(filenamet);
+                        filename.pop_back();
+                        char* filedata = getFile(filename, dir);
+                        if(filedata != nullptr){
+                            if((bytes=send(clientInfo.client_sock, filedata, strlen(filedata), 0)) < 0){
+                                printf("failed to send message: %s \n", msg);
+                                break;
+                            }
+                        }else{
+                            string msg = "404 File " + filename + " not found.\n";
+                            if((bytes=send(clientInfo.client_sock, msg.c_str(), strlen(msg.c_str()), 0)) < 0){
+                                printf("failed to send message: %s \n", msg);
+                                break;
+                            }
                         }
                     }
-                    delete[] filedata;
                 }else{
                     msg = "You are not logged in!!\n";
                     if((bytes=send(clientInfo.client_sock, msg.c_str(), strlen(msg.c_str()), 0)) < 0){
