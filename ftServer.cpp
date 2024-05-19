@@ -215,7 +215,14 @@ void* client(void *arg){ // will take user struct as argument
             req = strtok(line, " ");
             // handling requests
             if(strncmp(req.c_str(), "USER", 4) == 0){
-                    char *namet = strtok(NULL, " ");
+                    if (clientInfo.loggedin){
+                        msg = "You are already logged in!\n";
+                        if((bytes=send(clientInfo.client_sock, msg.c_str(), strlen(msg.c_str()), 0)) < 0){
+                            printf("failed to send message\n");
+                            break;
+                        }
+                    }else{
+                        char *namet = strtok(NULL, " ");
                     char *passt = strtok(NULL, " ");
                     if (namet != nullptr && passt != nullptr)
                     {
@@ -227,17 +234,17 @@ void* client(void *arg){ // will take user struct as argument
                     }
                     if (clientInfo.loggedin){
                         if((bytes=send(clientInfo.client_sock, msg.c_str(), strlen(msg.c_str()), 0)) < 0){
-                            printf("failed to send message: %s \n", msg);
+                            printf("failed to send message\n");
                             break;
                         }
                     }else{
                         msg = "400 User not found. Please try with another user.\n";
                         if((bytes=send(clientInfo.client_sock, msg.c_str(), strlen(msg.c_str()), 0)) < 0){
-                            printf("failed to send message: %s \n", msg);
+                            printf("failed to send message\n");
                             break;
                         }
                     }
-                    
+                }      
             }else if (strncmp(req.c_str(), "LIST", 4) == 0){
                 if (clientInfo.loggedin){
                     string filesstr = listFiles(dir);
@@ -306,20 +313,26 @@ void* client(void *arg){ // will take user struct as argument
                 }
             }else if (strncmp(req.c_str(), "DEL", 3) == 0){
                 if (clientInfo.loggedin){
-                    string filename = strtok(NULL, " ");
-                    if(deleteFile(filename, dir)){
-                        msg = "200 File " + filename + " deleted.\n";
-                        if((bytes=send(clientInfo.client_sock, msg.c_str(), strlen(msg.c_str()), 0)) < 0){
-                            printf("failed to send message: %s \n", msg);
-                            break;
+                    bool deleted = false;
+                    char *filent = strtok(NULL, " ");
+                    if (filent != nullptr){
+                        string filename(filent);
+                        filename.pop_back();
+                        deleted = deleteFile(filename, dir);
+                        if(deleted){
+                            msg = "200 File " + filename + " deleted.\n";
+                            if((bytes=send(clientInfo.client_sock, msg.c_str(), strlen(msg.c_str()), 0)) < 0){
+                                printf("failed to send message: %s \n", msg);
+                                break;
+                            }
+                        }else{
+                            msg = "404 File " + filename + " is not on the server.\n";
+                            if((bytes=send(clientInfo.client_sock, msg.c_str(), strlen(msg.c_str()), 0)) < 0){
+                                printf("failed to send message: %s \n", msg);
+                                break;
+                            }
                         }
-                    }else{
-                        msg = "404 File " + filename + " is not on the server.\n";
-                        if((bytes=send(clientInfo.client_sock, msg.c_str(), strlen(msg.c_str()), 0)) < 0){
-                            printf("failed to send message: %s \n", msg);
-                            break;
-                        }
-                    }
+                    } 
                 }else{
                     msg = "You are not logged in!!\n";
                     if((bytes=send(clientInfo.client_sock, msg.c_str(), strlen(msg.c_str()), 0)) < 0){
@@ -333,6 +346,7 @@ void* client(void *arg){ // will take user struct as argument
                     if((bytes=send(clientInfo.client_sock, msg.c_str(), strlen(msg.c_str()), 0)) < 0){
                         printf("failed to send message: %s \n", msg);
                     }
+                    // printf("Client %s has logged off", clientInfo.client_sock);
                     break;
                 }
             }else{
