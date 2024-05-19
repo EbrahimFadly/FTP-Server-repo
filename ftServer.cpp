@@ -201,25 +201,31 @@ bool deleteFile(string filename, string dir){ // tested
 
 void* client(void *arg){ // will take user struct as argument
     printf("thread created\n");
-    char line[DEFAULT_BUFLEN];
     int bytes;
     User clientInfo = *(User *)arg; 
     // char values[DEFAULT_BUFLEN][DEFAULT_BUFLEN];
+    string req, msg;
 
     do
     {
+        char line[DEFAULT_BUFLEN];
         bytes = recv(clientInfo.client_sock, line, DEFAULT_BUFLEN, 0);
         if(bytes > 0){
+            line[bytes] = '\0';
+            req = strtok(line, " ");
             // handling requests
-            int byte_count, sent_b;
-            string req = strtok(line, " "), msg;
-            if(strcmp(req.c_str(), "USER") == 0){
-                    string name = strtok(NULL, " ");
-                    string pass = strtok(NULL, " ");
-                    pass.pop_back();
-                    clientInfo.loggedin = authUser(passfile, name, pass);
+            if(strncmp(req.c_str(), "USER", 4) == 0){
+                    char *namet = strtok(NULL, " ");
+                    char *passt = strtok(NULL, " ");
+                    if (namet != nullptr && passt != nullptr)
+                    {
+                        string name(namet);
+                        string pass(passt);
+                        pass.pop_back();
+                        clientInfo.loggedin = authUser(passfile, name, pass);
+                        msg = "200 User " + name + " granted to access.\n";
+                    }
                     if (clientInfo.loggedin){
-                        msg = "200 User test granted to access.\n";
                         if((bytes=send(clientInfo.client_sock, msg.c_str(), strlen(msg.c_str()), 0)) < 0){
                             printf("failed to send message: %s \n", msg);
                             break;
@@ -232,7 +238,7 @@ void* client(void *arg){ // will take user struct as argument
                         }
                     }
                     
-            }else if (strcmp(req.c_str(), "LIST") == 0){
+            }else if (strncmp(req.c_str(), "LIST", 4) == 0){
                 if (clientInfo.loggedin){
                     string filesstr = listFiles(dir);
                     if((bytes=send(clientInfo.client_sock, filesstr.c_str(), strlen(filesstr.c_str()), 0)) < 0){
@@ -246,7 +252,7 @@ void* client(void *arg){ // will take user struct as argument
                             break;
                     }
                 }
-            }else if (strcmp(req.c_str(), "GET") == 0){
+            }else if (strncmp(req.c_str(), "GET", 3) == 0){
                 if (clientInfo.loggedin){
                     string filename = strtok(NULL, " ");
                     char* filedata = getFile(filename, dir);
@@ -271,7 +277,7 @@ void* client(void *arg){ // will take user struct as argument
                             break;
                     }
                 }
-            }else if (strcmp(req.c_str(), "PUT") == 0){
+            }else if (strncmp(req.c_str(), "PUT", 3) == 0){
                 if (clientInfo.loggedin){
                     string filename = strtok(NULL, " ");
                     char filedata[1000000000];
@@ -298,7 +304,7 @@ void* client(void *arg){ // will take user struct as argument
                             break;
                     }
                 }
-            }else if (strcmp(req.c_str(), "DEL") == 0){
+            }else if (strncmp(req.c_str(), "DEL", 3) == 0){
                 if (clientInfo.loggedin){
                     string filename = strtok(NULL, " ");
                     if(deleteFile(filename, dir)){
@@ -321,7 +327,7 @@ void* client(void *arg){ // will take user struct as argument
                             break;
                     }
                 }
-            }else if (strcmp(req.c_str(), "QUIT") == 0){
+            }else if (strncmp(req.c_str(), "QUIT", 4) == 0){
                 if (clientInfo.loggedin){
                     msg = "Goodbye!\n";
                     if((bytes=send(clientInfo.client_sock, msg.c_str(), strlen(msg.c_str()), 0)) < 0){
