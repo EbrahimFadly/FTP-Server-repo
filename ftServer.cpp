@@ -14,7 +14,6 @@
 using namespace std;
 
 #define DEFAULT_BUFLEN 1024
-#define MAX_FILE_SIZE 1000000000 // 1 gigabytes 
 
 string passfile, dir;
 
@@ -175,13 +174,13 @@ char* getFile(string filename, string dir){
     return filebytes;
 }
 
-bool putFile(char* file, string filename, string dir, int size){
+bool putFile(string &file, string filename, string dir, int size){
     string filepath = dir + '/' + filename;
     ofstream f(filepath, ios::binary); // opening in binary incase file is not in text format
 
     if (f.is_open() == false) return false;
     
-    f.write(file, size);
+    f.write(file.c_str(), size);
     f.close();
     return true;
 }
@@ -214,7 +213,7 @@ void* client(void *arg){ // will take user struct as argument
                             break;
                         }
                     }else{
-                        char *namet = strtok(NULL, " ");
+                    char *namet = strtok(NULL, " ");
                     char *passt = strtok(NULL, " ");
                     if (namet != nullptr && passt != nullptr)
                     {
@@ -287,34 +286,38 @@ void* client(void *arg){ // will take user struct as argument
             else if (strncmp(req.c_str(), "PUT", 3) == 0){
                 if (clientInfo.loggedin){
                     char* filenamet = strtok(NULL, " ");
-                    if (filenamet != nullptr)
-                    {
+                    if (filenamet != nullptr){
                         string filename(filenamet);
                         filename.pop_back();
-                        char* filedata = new char[MAX_FILE_SIZE];
-                        bytes = recv(clientInfo.client_sock, filedata, MAX_FILE_SIZE, 0);
-                        if (bytes > 0){
-                            if(putFile(filedata, filename, dir, bytes) == false){
-                                    msg = "400 File cannot save on server side.\n";
-                                    if((bytes=send(clientInfo.client_sock, msg.c_str(), strlen(msg.c_str()), 0)) < 0){
-                                        printf("failed to send message: %s \n", msg);
-                                       break;
-                                    }
-                            }else{
-                                msg = "200 " + to_string(bytes) + " Byte " + filename + " file retrieved by server and was saved.\n";
-                                if((bytes=send(clientInfo.client_sock, msg.c_str(), strlen(msg.c_str()), 0)) < 0){
-                                        printf("failed to send message: %s \n", msg);
-                                        break;
-                                    }
+                        string filedata, ln;
+                        char line[DEFAULT_BUFLEN];
+                        int tbytes;
+                        do{
+                            tbytes = recv(clientInfo.client_sock, line, DEFAULT_BUFLEN, 0);
+                            if (tbytes > 0) {
+                                filedata += line;
+                                filedata += '\n';
+                            } else if (tbytes == 0) {
+                                cout << "Connection closed by client" << endl;
+                                break;
+                            } else {
+                                cout << "Problem with the connection with client " << clientInfo.client_sock << ", closing connection..." << endl;
+                                break;
                             }
-                        }else if (bytes == 0){
-                            printf("Connection closed by client\n");
-                            break;
+                        }while((strncmp(line, ".", 1) != 0) || tbytes > 2);
+                        if(putFile(filedata, filename, dir, filedata.length()) == false){
+                                msg = "400 File cannot save on server side.\n";
+                                if((bytes=send(clientInfo.client_sock, msg.c_str(), strlen(msg.c_str()), 0)) < 0){
+                                    printf("failed to send message: %s \n", msg);
+                                break;
+                                }
                         }else{
-                            printf("Problem with the connection with client %d, closing connection...\n", clientInfo.client_sock);
-                            break;  
+                            msg = "200 " + to_string(filedata.length()) + " Byte " + filename + " file retrieved by server and was saved.\n";
+                            if((bytes=send(clientInfo.client_sock, msg.c_str(), strlen(msg.c_str()), 0)) < 0){
+                                    printf("failed to send message: %s \n", msg);
+                                    break;
+                                }
                         }    
-                        delete[] filedata;
                     }
                 }else{
                     msg = "You are not logged in!!\n";
