@@ -25,7 +25,6 @@ typedef struct User {
 bool authUser(string file, string username, string pass);
 string listFiles(string dir);
 char* getFile(string filename, string dir);
-bool putFile(char* file, string filename, string dir, int size);
 bool deleteFile(string filename, string dir);
 void quit();
 void* client(void *arg);
@@ -165,24 +164,12 @@ char* getFile(string filename, string dir){
     char* filebytes = new char[filestats.st_size + 4];
 
     f.read(filebytes, filestats.st_size);
-    filebytes[filestats.st_size] = '\n';
+    // filebytes[filestats.st_size] = '\n';
     filebytes[filestats.st_size + 1] = '.';
     filebytes[filestats.st_size + 2] = '\n';
-    filebytes[filestats.st_size + 3] = '\0';
     f.close();
 
     return filebytes;
-}
-
-bool putFile(string &file, string filename, string dir, int size){
-    string filepath = dir + '/' + filename;
-    ofstream f(filepath, ios::binary); // opening in binary incase file is not in text format
-
-    if (f.is_open() == false) return false;
-    
-    f.write(file.c_str(), size);
-    f.close();
-    return true;
 }
 
 bool deleteFile(string filename, string dir){
@@ -289,35 +276,38 @@ void* client(void *arg){ // will take user struct as argument
                     if (filenamet != nullptr){
                         string filename(filenamet);
                         filename.pop_back();
-                        string filedata, ln;
-                        char line[DEFAULT_BUFLEN];
+                        char tmpline[DEFAULT_BUFLEN];
                         int tbytes;
-                        do{
-                            tbytes = recv(clientInfo.client_sock, line, DEFAULT_BUFLEN, 0);
-                            if (tbytes > 0) {
-                                filedata += line;
-                                filedata += '\n';
-                            } else if (tbytes == 0) {
-                                cout << "Connection closed by client" << endl;
-                                break;
-                            } else {
-                                cout << "Problem with the connection with client " << clientInfo.client_sock << ", closing connection..." << endl;
-                                break;
+                        int size = 0;
+                        string filepath = dir + '/' + filename;
+                        ofstream f(filepath, ios_base::binary);
+                        if (f.is_open() == false){
+                            msg = "400 File cannot save on server side.\n";
+                            if((bytes=send(clientInfo.client_sock, msg.c_str(), strlen(msg.c_str()), 0)) < 0){
+                                printf("failed to send message: %s \n", msg);
+                            break;
                             }
-                        }while((strncmp(line, ".", 1) != 0) || tbytes > 2);
-                        if(putFile(filedata, filename, dir, filedata.length()) == false){
-                                msg = "400 File cannot save on server side.\n";
-                                if((bytes=send(clientInfo.client_sock, msg.c_str(), strlen(msg.c_str()), 0)) < 0){
-                                    printf("failed to send message: %s \n", msg);
-                                break;
-                                }
                         }else{
-                            msg = "200 " + to_string(filedata.length()) + " Byte " + filename + " file retrieved by server and was saved.\n";
+                            do{
+                                tbytes = recv(clientInfo.client_sock, tmpline, DEFAULT_BUFLEN, 0);
+                                if (tbytes > 0) {
+                                    f.write(tmpline, tbytes);
+                                    size += tbytes;
+                                } else if (tbytes == 0) {
+                                    cout << "Connection closed by client" << endl;
+                                    break;
+                                } else {
+                                    cout << "Problem with the connection with client " << clientInfo.client_sock << ", closing connection..." << endl;
+                                    break;
+                                }
+                            }while((strncmp(tmpline, ".", 1) != 0) || tbytes > 2);
+                            f.close();
+                            msg = "200 " + to_string(size) + " Byte " + filename + " file retrieved by server and was saved.\n";
                             if((bytes=send(clientInfo.client_sock, msg.c_str(), strlen(msg.c_str()), 0)) < 0){
                                     printf("failed to send message: %s \n", msg);
                                     break;
-                                }
-                        }    
+                            }
+                        }   
                     }
                 }else{
                     msg = "You are not logged in!!\n";
